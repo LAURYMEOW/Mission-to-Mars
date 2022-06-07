@@ -1,19 +1,34 @@
-
-# Import Splinter and BeautifulSoup
+# Import Splinter, BeautifulSoup, and Pandas
 from splinter import Browser
 from bs4 import BeautifulSoup as soup
-from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
+import datetime as dt
+from webdriver_manager.chrome import ChromeDriverManager
 
-#set your executable path in the next cell
-executable_path = {'executable_path': ChromeDriverManager().install()}
-browser = Browser('chrome', **executable_path, headless=False)
+def scrape_all():
+    # Initiate headless driver for deployment
+    executable_path = {'executable_path': ChromeDriverManager().install()}
+    browser = Browser('chrome', **executable_path, headless=True)
 
+    news_title, news_paragraph = mars_news(browser)
+
+    # Run all scraping functions and store results in a dictionary
+    data = {
+        "news_title": news_title,
+        "news_paragraph": news_paragraph,
+        "featured_image": featured_image(browser),
+        "facts": mars_facts(),
+        "last_modified": dt.datetime.now()
+    }
+
+    # Stop webdriver and return data
+    browser.quit()
+    return data
 
 def mars_news(browser):
     #assign the url and instruct the browser to visit it
     # Visit the mars nasa news site
-    url = 'https://redplanetscience.com'
+    url = 'https://redplanetscience.com/'
     browser.visit(url)
     # Optional delay for loading the page
     browser.is_element_present_by_css('div.list_text', wait_time=1)
@@ -27,7 +42,7 @@ def mars_news(browser):
     try:
         slide_elem = news_soup.select_one('div.list_text')
         # We'll want to assign the title and summary text to variables we'll reference later. In the next empty cell, let's begin our scraping
-        slide_elem.find('div', class_='content_title')
+        #slide_elem.find('div', class_='content_title')
         # Use the parent element to find the first `a` tag and save it as `news_title`
         news_title = slide_elem.find('div', class_='content_title').get_text()
         # Use the parent element to find the paragraph text
@@ -63,17 +78,22 @@ def featured_image(browser):
     return img_url
 
     # We're going to scrape the entire table with Pandas' .read_html() function.
-
-    def mars_facts():
-        #use 'read_html" to scrape the facts table into a dataframe
+# Mars Facts
+def mars_facts():
+    # Add try/except for error handling
+    try:
+        # Use 'read_html' to scrape the facts table into a dataframe
         df = pd.read_html('https://galaxyfacts-mars.com')[0]
     except BaseException:
         return None
     
     # Assign columns and set index of dataframe
+    #df = pd.read_html('https://galaxyfacts-mars.com')[0]
     df.columns=['description', 'Mars', 'Earth']
     df.set_index('description', inplace=True)
    # Convert dataframe into HTML format, add bootstrap
     return df.to_html()
 
-browser.quit()
+if __name__ == "__main__":
+    # If running as script, print scraped data
+    print(scrape_all())
